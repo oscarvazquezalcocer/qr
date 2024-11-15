@@ -15,10 +15,12 @@ app.secret_key = 'supersecretkey'  # Necesario para usar flash()
 def generar_qr(data, nombre_qr):
     # Crear el código QR
     qr = qrcode.make(data)
+    # Convertir la imagen a RGB (elimina la transparencia)
+    qr = qr.convert("RGB")
     # Guardar la imagen en la carpeta qr
     if not os.path.exists('static/qr'):
         os.makedirs('static/qr')
-    qr.save(f'static/qr/{nombre_qr}.png')
+    qr.save(f'static/qr/{nombre_qr}.jpg', 'JPEG')
 
 # Función para guardar datos en la base de datos
 def guardar_en_base_de_datos(dataframe):
@@ -68,11 +70,17 @@ def upload_file():
         return redirect(url_for('index'))
     
     if file and file.filename.endswith('.csv'):
-        # Leer el archivo CSV
-        df = pd.read_csv(file)
+        # Leer el archivo CSV, forzando la columna 'nss' a ser tratada como texto
+        df = pd.read_csv(file, dtype={'nss': str})  # Forzamos 'nss' a tipo string
+
+        # Convertir la columna 'nss' a tipo string (esto asegura que sea tratado como texto)
+        df['nss'] = df['nss'].astype(str)
+
+        # Reemplazar todos los valores NaN por una cadena vacía en el DataFrame
+        df = df.fillna('')
 
         # Asegurarse de que las columnas necesarias existan en el CSV
-        required_columns = ['matricula', 'nss', 'nombres', 'apellidos', 'semestre', 'tipo_sangre', 'telefono_emergencia']
+        required_columns = ['matricula', 'nss', 'nombres', 'apellido_paterno', 'apellido_materno', 'tipo_de_sangre', 'telefono_de_emergencia', 'contacto_de_emergencia']
         if not all(col in df.columns for col in required_columns):
             flash(f"El archivo CSV debe contener las columnas {', '.join(required_columns)}")
             return redirect(url_for('index'))
@@ -86,9 +94,11 @@ def upload_file():
         # Generar y guardar los códigos QR para cada fila
         for i, row in columnas_para_base_de_datos.iterrows():
             # Generar el contenido para el QR (concatenando las columnas relevantes)
-            data_qr = (f"NSS: {row['nss']} | Nombre: {row['nombres']} {row['apellidos']} "
-                       f"| Semestre: {row['semestre']} | Tipo Sangre: {row['tipo_sangre']} "
-                       f"| Teléfono Emergencia: {row['telefono_emergencia']}")
+            data_qr = (f"Nombre: {row['nombres']} {row['apellido_paterno']} {row['apellido_materno']} | "
+                       f"Tipo de sangre: {row['tipo_de_sangre']} | "
+                       f"NSS: {row['nss']} | "
+                       f"Contacto de Emergencia: {row['contacto_de_emergencia']} | "
+                       f"Telefono de Emergencia: {row['telefono_de_emergencia']} | ")
             
             # Nombre del archivo QR será el NSS de la fila
             nombre_qr = str(row['matricula'])  # Aseguramos que el nombre sea una cadena
@@ -117,8 +127,8 @@ def run_ngrok():
     print("Closing listener")
 if __name__ == '__main__':
   # Iniciar el túnel de ngrok en un hilo separado
-  ngrok_thread = threading.Thread(target=run_ngrok)
-  ngrok_thread.start()
+  #ngrok_thread = threading.Thread(target=run_ngrok)
+  #ngrok_thread.start()
 
   app.run(debug=True, host='0.0.0.0', port="5001", use_reloader=False)
   
