@@ -3,13 +3,19 @@ import pandas as pd
 import sqlite3
 import qrcode
 import os
-import ngrok
-import time
-import threading
-
+import smbclient
 
 app = Flask(__name__)
 app.secret_key = 'supersecretkey'  # Necesario para usar flash()
+
+# Información de conexión SMB
+server_ip = '172.16.1.38'  # IP del servidor Windows 10
+username = 'sdcano'  # Usuario con permisos para escribir en el recurso
+password = 'sextavez-16'  # Contraseña del usuario
+share_name = 'rqalumno'  # Nombre del recurso compartido en Windows
+
+# Configurar la autenticación para SMB
+smbclient.ClientConfig(username=username, password=password)
 
 # Función para generar y guardar el código QR
 def generar_qr(data, nombre_qr):
@@ -21,6 +27,17 @@ def generar_qr(data, nombre_qr):
     if not os.path.exists('static/qr'):
         os.makedirs('static/qr')
     qr.save(f'static/qr/{nombre_qr}.jpg', 'JPEG')
+
+    qr_filename = f"{nombre_qr}.jpg"
+    qr_path = os.path.join('static', 'qr', qr_filename)
+
+    # Subir la firma a la carpeta compartida en el servidor SMB
+    remote_file_path = f'\\\\{server_ip}\\\\{share_name}\\\\{qr_filename}'
+
+    # Subir el archivo a la ruta SMB
+    with smbclient.open_file(remote_file_path, mode='wb') as remote_file:
+        with open(qr_path, 'rb') as local_file:
+            remote_file.write(local_file.read())
 
 # Función para guardar datos en la base de datos
 def guardar_en_base_de_datos(dataframe):
@@ -71,7 +88,7 @@ def upload_file():
     
     if file and file.filename.endswith('.csv'):
         # Leer el archivo CSV, forzando la columna 'nss' a ser tratada como texto
-        df = pd.read_csv(file, dtype={'nss': str})  # Forzamos 'nss' a tipo string
+        df = pd.read_csv(file, dtype={'nss': str, 'telefono_de_emergencia': str})  # Forzamos 'nss' a tipo string
 
         # Convertir la columna 'nss' a tipo string (esto asegura que sea tratado como texto)
         df['nss'] = df['nss'].astype(str)
@@ -94,7 +111,7 @@ def upload_file():
         # Generar y guardar los códigos QR para cada fila
         for i, row in columnas_para_base_de_datos.iterrows():
             # Generar el contenido para el QR (concatenando las columnas relevantes)
-            data_qr = (f"Nombre: {row['nombres']} {row['apellido_paterno']} {row['apellido_materno']} | "
+            data_qr = (f"Nombre: {row['apellido_paterno']} {row['apellido_materno']} {row['nombres']} | "
                        f"Tipo de sangre: {row['tipo_de_sangre']} | "
                        f"NSS: {row['nss']} | "
                        f"Contacto de Emergencia: {row['contacto_de_emergencia']} | "
@@ -112,23 +129,7 @@ def upload_file():
         flash('Solo se permiten archivos CSV')
         return redirect(url_for('index'))
 
-
-def run_ngrok():
-  listener = ngrok.forward(5001, authtoken_from_env=True)
-
-  # Output ngrok url to console
-  print(f"Ingress established at {listener.url()}")
-
-  try:
-    while True:
-      time.sleep(1)
-     
-  except KeyboardInterrupt:
-    print("Closing listener")
 if __name__ == '__main__':
-  # Iniciar el túnel de ngrok en un hilo separado
-  #ngrok_thread = threading.Thread(target=run_ngrok)
-  #ngrok_thread.start()
 
   app.run(debug=True, host='0.0.0.0', port="5001", use_reloader=False)
   

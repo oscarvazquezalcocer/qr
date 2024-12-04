@@ -1,3 +1,8 @@
 .DS_Store
 venv
-static/qr
+static/qr/*
+!static/qr/
+
+static/csv/*
+!static/csv/
+
