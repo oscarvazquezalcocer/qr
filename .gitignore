@@ -2,7 +2,7 @@
 venv
 static/qr/*
 !static/qr/
-
+ __pycache__
 static/csv/*
 !static/csv/
 

@@ -10,8 +10,8 @@ app.secret_key = 'supersecretkey'  # Necesario para usar flash()
 
 # Información de conexión SMB
 server_ip = '172.16.1.38'  # IP del servidor Windows 10
-username = 'sdcano'  # Usuario con permisos para escribir en el recurso
-password = 'sextavez-16'  # Contraseña del usuario
+username = 'administrador'  # Usuario con permisos para escribir en el recurso
+password = 'octubre2024$'  # Contraseña del usuario
 share_name = 'rqalumno'  # Nombre del recurso compartido en Windows
 
 # Configurar la autenticación para SMB
